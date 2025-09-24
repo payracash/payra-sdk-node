@@ -1,0 +1,41 @@
+{
+    "name": "payra-sdk-node",
+    "version": "1.2.0",
+    "description": "Generate on-chain Ethereum-compatible signatures and order status verification.",
+    "main": "src/index.js",
+    "type": "module",
+    "engines": {
+        "node": ">=18"
+    },
+    "exports": {
+        ".": {
+            "import": "./src/index.js"
+        }
+    },
+    "files": [
+        "src",
+        "test",
+        ".env.example",
+        "README.md"
+    ],
+    "scripts": {
+        "start": "node src/index.js"
+    },
+    "keywords": ["payra", "signature", "ethereum", "web3", "crypto"],
+    "author": "Wraith",
+    "license": "MIT",
+
+
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/payracash/payra-sdk-node.git"
+    },
+    "bugs": {
+        "url": "https://github.com/payracash/payra-sdk-node/issues"
+    },
+    "homepage": "https://github.com/payracash/payra-sdk-node#readme",
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "ethers": "^6.9.1"
+    }
+}
