@@ -1,4 +1,5 @@
 // src/payra.js
 
-export { generateSignature } from './signature.js';
-export { isOrderPaid } from './order_verification.js';
+export { generateSignature } from './payraSignature.js';
+export { isOrderPaid } from './payraVerification.js';
+export { PayraUtils } from './payraUtils.js';

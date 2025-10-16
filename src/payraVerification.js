@@ -2,6 +2,7 @@
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
+import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,12 +14,13 @@ dotenv.config();
  * @param {string} orderId   Unique order identifier
  * @returns {Promise<{success: boolean, paid: boolean|null, error: string|null}>}
  */
-export async function isOrderPaid(network, orderId) {
+export async function isOrderPaid(network, orderId)
+{
     try {
         const upperNet = network.toUpperCase();
-
-        const quickNodeUrl = getQuickNodeUrl(upperNet);
-
+        const rpcUrl = getRpcUrl(upperNet);
+        const ok = await checkRpcHealth(rpcUrl);
+        if (!ok) throw new Error(`RPC ${rpcUrl} is not responding`);
         const merchantId = process.env[`PAYRA_${upperNet}_MERCHANT_ID`];
         const forwardAddress = process.env[`PAYRA_${upperNet}_CORE_FORWARD_CONTRACT_ADDRESS`];
 
@@ -27,7 +29,7 @@ export async function isOrderPaid(network, orderId) {
         }
 
         // Provider (read-only, RPC)
-        const provider = new ethers.JsonRpcProvider(quickNodeUrl);
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
 
         // ABI dla forward i core
         const abiPath = path.resolve("./src/contracts/payraABI.json");
@@ -73,23 +75,56 @@ export async function isOrderPaid(network, orderId) {
 /**
  * Get QuickNode RPC endpoint URL
  */
-function getQuickNodeUrl(network) {
-    const rpcMap = {
-        POLYGON: "https://warmhearted-ancient-shadow.matic.quiknode.pro/{API_KEY}",
-        ETHEREUM: "https://warmhearted-ancient-shadow.quiknode.pro/{API_KEY}",
-        LINEA: "https://warmhearted-ancient-shadow.linea-mainnet.quiknode.pro/{API_KEY}",
-        FLARE: "https://warmhearted-ancient-shadow.flare-mainnet.quiknode.pro/{API_KEY}/ext/bc/C/rpc/",
-    };
+function getRpcUrl(network)
+{
+    const upperNet = network.toUpperCase();
+    const urls = [];
 
-    const apiKey = process.env.QUICK_NODE_RPC_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("QUICK_NODE_RPC_API_KEY is not set!");
+    let i = 1;
+    while (true) {
+        const key = `PAYRA_${upperNet}_RPC_URL_${i}`;
+        const value = process.env[key];
+        if (!value) break;
+        urls.push(value.trim());
+        i++;
     }
 
-    if (!rpcMap[network]) {
-        throw new Error(`Unsupported network: ${network}`);
+    if (urls.length === 0) {
+        throw new Error(`No RPC URLs found for network: ${upperNet}`);
     }
 
-    return rpcMap[network].replace("{API_KEY}", apiKey);
+    // Random 1 url
+    const randomUrl = urls[Math.floor(Math.random() * urls.length)];
+    return randomUrl;
+}
+
+async function checkRpcHealth(url)
+{
+    const timeout = 3000; // 3 seconds
+
+    try {
+        const response = await axios.post(
+            url,
+            {
+                jsonrpc: "2.0",
+                method: "eth_blockNumber",
+                id: 1,
+                params: []
+            },
+            {
+                timeout,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+
+        // Check if response is valid
+        return (
+            response.status === 200 &&
+            response.data &&
+            typeof response.data.result === 'string'
+        );
+    } catch (error) {
+        console.log(`RPC ${url} failed:`, error.message);
+        return false;
+    }
 }

@@ -1,26 +1,62 @@
 
-# Payra Node SDK (Backend Signature and Check Order Status)
+# Payra Node SDK
 
-This package allows you to **generate and verify payment signatures** and **checking the on-chain status of orders** for the [Payra](https://payra.cash) on-chain payment system.  
+Official Node SDK for integrating **Payra's on-chain payment system** into your backend applications.
 
-This SDK provides:  
-- Secure generation of **ECDSA signatures** compatible with the Payra smart contract (used for payment verification).  
-- Easy integration for **checking the on-chain status of orders** to confirm whether payments have been completed.
--
----
+This SDK provides:
+- Secure generation of **ECDSA signatures** compatible with the Payra smart contract — used for order payment verification.
+- Simple methods for **checking the on-chain status of orders** to confirm completed payments.
 
-## SETUP
+## How It Works
 
-Before installing this package, make sure you have an active Payra account:
+The typical flow for signing and verifying a Payra transaction:
 
-- [https://payra.cash](https://payra.cash)
+1. The **frontend** prepares all required payment parameters:
+   - **Network** – blockchain name (e.g. Polygon, Linea)
+   - **Token address** – ERC-20 token contract address
+   - **Order ID** – unique order identifier
+   - **AmountWei** – already converted to the smallest unit (e.g. wei, 10⁶)
+   - **Timestamp** – Unix timestamp of the order
+   - **Payer wallet address**
 
-You will need your `merchantID` and a dedicated account wallet (private key) to generate valid payment signatures.
+2. The frontend sends these parameters to your **backend**.
+3. The **backend** uses this SDK to generate a cryptographic **ECDSA signature** with its private key (performed **offline**).
+4. The backend returns the generated signature to the frontend.
+5. The **frontend** calls the Payra smart contract (`payOrder`) with all parameters **plus** the signature.
 
-Additionally, you must create a free account at [QuickNode](https://www.quicknode.com/) to obtain an API key.  
-This key is required for sending RPC requests to the blockchain in order to verify the on-chain status of orders.
+This process ensures full compatibility between your backend and Payra’s on-chain verification logic.
 
----
+## Features
+
+- Generates **Ethereum ECDSA signatures** using the `secp256k1` curve.  
+- Fully compatible with **Payra's Solidity smart contracts** (`ERC-1155` payment verification).  
+- Includes built-in **ABI encoding and decoding** via [`ethers.js`](https://github.com/ethereum/web3.py).  
+- Supports environment-based configuration (`.env`) for managing multiple blockchain networks.  
+- Verifies **order payment status directly on-chain** via RPC or blockchain explorer API.  
+- Provides **secure backend integration** using merchant private keys.  
+- Includes optional utility helpers for:
+  - **Currency conversion** (via [ExchangeRate API](https://www.exchangerate-api.com/))  
+  - **USD ⇄ WEI** conversion for token precision handling.  
+
+## Setup
+
+Before installing this package, make sure you have an active **Payra** account:
+
+👉 [https://payra.cash](https://payra.cash)
+
+You will need:
+
+- Your **Merchant ID** (unique for each blockchain network)  
+- Your **Private Key** (used to sign Payra transactions securely)
+
+Additionally:
+
+- Create a free account at [QuickNode](https://www.quicknode.com/) to obtain your **RPC URLs** - these are required for reading on-chain order statuses directly from the blockchain.
+
+Optional (recommended):
+
+- Create a free API key at [ExchangeRate API](https://www.exchangerate-api.com/)  
+  to enable **automatic fiat → USD conversions** using the built-in utility helpers.
 
 ## Installation
 
@@ -28,64 +64,188 @@ This key is required for sending RPC requests to the blockchain in order to veri
 npm install payra-sdk-node
 ```
 
----
+## Environment Setup
 
-## Usage
+Create a (`.env`) file in your project root and define the following variables:
+
+```env
+# Optional — only needed if you want to use the built-in currency conversion helper
+EXCHANGE_RATE_API_KEY=         # Your ExchangeRate API key (from exchangerate-api.com)
+EXCHANGE_RATE_CACHE_TIME=720   # Cache duration in minutes (default: 720 = 12h)
+
+# Polygon Network Configuration
+PAYRA_POLYGON_CORE_FORWARD_CONTRACT_ADDRESS=0xf30070da76B55E5cB5750517E4DECBD6Cc5ce5a8
+PAYRA_POLYGON_PRIVATE_KEY=
+PAYRA_POLYGON_MERCHANT_ID=
+PAYRA_POLYGON_RPC_URL_1=
+PAYRA_POLYGON_RPC_URL_2=
+
+# Ethereum Network Configuration
+PAYRA_ETHEREUM_CORE_FORWARD_CONTRACT_ADDRESS=
+PAYRA_ETHEREUM_PRIVATE_KEY=
+PAYRA_ETHEREUM_MERCHANT_ID=
+PAYRA_ETHEREUM_RPC_URL_1=
+PAYRA_ETHEREUM_RPC_URL_2=
+
+# Linea Network Configuration
+PAYRA_LINEA_CORE_FORWARD_CONTRACT_ADDRESS=
+PAYRA_LINEA_PRIVATE_KEY=
+PAYRA_LINEA_MERCHANT_ID=
+PAYRA_LINEA_RPC_URL_1=
+PAYRA_LINEA_RPC_URL_2=
+```
+
+#### Important Notes
+
+-   The cache automatically refreshes when it expires.    
+-   You can adjust the cache duration by setting  `EXCHANGE_RATE_CACHE_TIME`:
+    -   `5`  → cache for 5 minutes
+    -   `60`  → cache for 1 hour
+    -   `720`  → cache for 12 hours (default)
+- Each network (Polygon, Ethereum, Linea) has its own  **MERCHANT_ID**,  **PRIVATE_KEY**, and  **RPC URLs**.  
+- The SDK automatically detects which chain configuration to use based on the selected network.
+- You can use multiple RPC URLs for redundancy (the SDK will automatically fall back if one fails).
+- Contract addresses correspond to the deployed Payra Core Forward contracts per network.
+
+## Usage Example
+
+### Generate Signature
 
 ```ts
-import { generateSignature, isOrderPaid } from 'payra-sdk-node';
+import { generateSignature, PayraUtils } from 'payra-sdk-node';
 
-// to sign order
-const signature = generateSignature(network, tokenAddress, orderId, amount, timestamp, payerAddress);
-console.log('Signature:', signature);
+try {
+		// convert to wei if need
+		// const amountWei = PayraUtils.toWei(3.34, "polygon", "usdt");
 
-// to check order status
-const result = await isOrderPaid(network, orderId);
+        const network       = 'polygon';
+        const tokenAddress  = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';  // example token (USDT)
+        const orderId       = 'ORDER-1760273788561-93-661';
+        const amountWei     = 12340000;   // 1 token (in wei)
+        const timestamp     = 1760274141  // Math.floor(Date.now() / 1000);
+        const payerAddress  = '0xbCd665bE1393094bfD5013E0e2e21aB6Df1D6078';
+
+        const sig = generateSignature(
+            network,
+            tokenAddress,
+            orderId,
+            amountWei,
+            timestamp,
+            payerAddress
+        );
+
+        console.log('Signature generated:', sig);
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+```
+
+#### Input Parameters
+
+| Field         | Type     | Description                                  |
+|--------------|----------|----------------------------------------------|
+| **`network`**    | `string` | Selected network name                        |
+| **`tokenAddress`** | `string` | ERC20 token contract address                 |
+| **`orderId`**     | `string` | Unique order reference (e.g. ORDER-123)      |
+| **`amountWei`**      | `string` | Token amount in smallest unit (e.g. wei)     |
+| **`timestamp`**   | `number` | Unix timestamp of signature creation         |
+| **`payerAddress`**   | `string` | Payer Wallet Address    
+
+### Check Order Status
+
+```ts
+import { isOrderPaid } from 'payra-sdk-node';
+
+const result = await isOrderPaid("polygon", "ord-170");
 console.log(result);
+```
+
+### Example response structure
+
+```ts
+{
+  success: true,
+  paid: true,
+  error: null
+}
+
+```
+
+**Note:** Network identifiers should always be lowercase (e.g., `"polygon"`, `"ethereum"`, `"linea"`, `"flare"`).
+
+## Utilities / Conversion Helpers
+
+The SDK includes  **helper functions**  for working with token amounts and currency conversion.
+
+### 1. Get Token Decimals
+
+```ts
+import { PayraUtils } from 'payra-sdk-node';
+
+const tokenDecimals = PayraUtils.getTokenDecimals("polygon", "usdt");
+console.log("Token decimals polygon usdt:", tokenDecimals);
+```
+Returns the number of decimal places for a given token on a specific network.
+
+---
+
+### 2. Convert USD/Token Amounts to Wei
+
+```ts
+import { PayraUtils } from 'payra-sdk-node';
+
+const amountWei = PayraUtils.toWei(3.34, "polygon", "usdt");
+console.log("To Wei:", amountWei);
 ```
 
 ---
 
-### Input Parameters
+### 3. Convert Wei to USD/Token
 
-| Field         | Type     | Description                                  |
-|--------------|----------|----------------------------------------------|
-| `network`    | `string` | Selected network name                        |
-| `tokenAddress` | `string` | ERC20 token contract address                 |
-| `orderId`     | `string` | Unique order reference (e.g. ORDER-123)      |
-| `amount`      | `string` | Token amount in smallest unit (e.g. wei)     |
-| `timestamp`   | `number` | Unix timestamp of signature creation         |
-| `payerAddress`   | `string` | Payer Wallet Address                         |
+```ts
+import { PayraUtils } from 'payra-sdk-node';
+
+const amount = PayraUtils.fromWei(amountWei, "polygon", "usdt");
+console.log("From Wei:", amount);
+```
 
 ---
+
+### 4. Currency Conversion (Optional)
+
+Payra processes all payments in  **USD**.  If your store uses another currency (like EUR, AUD, or GBP), you can:
+
+-   Convert the amount to USD on your backend manually,  **or**
+-   Use the built-in helper provided in the SDK.
+
+```ts
+import { PayraUtils } from 'payra-sdk-node';
+
+// Convert 100 EUR to USD
+const usdValue = await PayraUtils.convertToUSD(100, "EUR");
+console.log("100 EUR =", usdValue, "USD");
+```
+
+#### Setup for Currency Conversion
+
+To use the conversion helper, you need a free API key from  **[exchangerate-api.com](https://exchangerate-api.com/)**.
+
+1.  Register a free account and get your API key.
+2.  Add the key to your  (`.env`)  file:
+
+```php
+EXCHANGE_RATE_API_KEY=your_api_key_here
+```
+
+4.  That’s it — Payra will automatically fetch the exchange rate and calculate the USD amount.
+
+**Note:** The free plan allows 1,500 requests per month, which is sufficient for most stores. Exchange rates on this plan are updated every 24 hours, so with caching, it’s more than enough. Paid plans offer faster update intervals.
 
 ## Notes
 
 - Your private key **must be kept safe** and **never** committed to code repositories.
 - `PAYRA_WALLET_KEY` can be with or without `0x` prefix — both formats are accepted.
 - The returned signature is a standard `0x`-prefixed Ethereum ECDSA signature.
-
----
-
-## Example `.env`
-
-```env
-QUICK_NODE_RPC_API_KEY=your_quick_node_api_key
-
-PAYRA_POLYGON_CORE_FORWARD_CONTRACT_ADDRESS=0xf30070da76B55E5cB5750517E4DECBD6Cc5ce5a8
-PAYRA_POLYGON_PRIVATE_KEY=your_private_key_here
-PAYRA_POLYGON_MERCHANT_ID=your_merchant_id_here
-
-PAYRA_ETHEREUM_CORE_FORWARD_CONTRACT_ADDRESS=
-PAYRA_ETHEREUM_PRIVATE_KEY=
-PAYRA_ETHEREUM_MERCHANT_ID=
-
-PAYRA_LINEA_CORE_FORWARD_CONTRACT_ADDRESS=
-PAYRA_LINEA_PRIVATE_KEY=
-PAYRA_LINEA_MERCHANT_ID=
-```
-
----
 
 ## Project
 
@@ -94,16 +254,12 @@ PAYRA_LINEA_MERCHANT_ID=
 -   [https://payra.xyz](https://payra.xyz)
 -   [https://payra.eth](https://payra.eth)
 
----
-
 ## Social Media
 
 - [Telegram Payra Group](https://t.me/+GhTyJJrd4SMyMDA0)
 - [Telegram Announcements](https://t.me/payracash)
 - [Twix (X)](https://x.com/PayraCash)
 - [Hashnode](https://payra.hashnode.dev)
-
----
 
 ##  License
 
