@@ -8,62 +8,104 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /**
+ * Get detailed status of an order from Payra smart contract (Node.js version).
+ *
+ * @param {string} network   Blockchain network ("polygon", "ethereum", "linea", "flare")
+ * @param {string} orderId   Unique order identifier
+ *
+ * @returns {Promise<{
+ *   success: boolean,
+ *   paid: boolean|null,
+ *   token: string|null,
+ *   amount: number|null,
+ *   fee: number|null,
+ *   timestamp: number|null,
+ *   error: string|null
+ * }>}
+ */
+ export async function getOrderStatus(network, orderId) {
+    try {
+        const merchantId = process.env[`PAYRA_${network.toUpperCase()}_MERCHANT_ID`];
+
+        const {
+            forwardContract,
+            coreIface,
+            data,
+        } = await prepareForwardCall(
+            network,
+            "getOrderStatus",
+            [merchantId, orderId]
+        );
+
+        // forward(bytes) → static call
+        const rawResult = await forwardContract.forward.staticCall(data);
+
+        // decode tuple
+        const [result] = coreIface.decodeFunctionResult(
+            "getOrderStatus",
+            rawResult
+        );
+
+        return {
+            success: true,
+            error: null,
+            paid: Boolean(result.paid),
+            token: result.token,
+            amount: Number(result.amount),
+            fee: Number(result.fee),
+            timestamp: Number(result.timestamp),
+        };
+
+    } catch (err) {
+        console.error("getOrderStatus failed:", err.message);
+        return {
+            success: false,
+            error: err.message,
+            paid: null,
+            token: null,
+            amount: null,
+            fee: null,
+            timestamp: null,
+        };
+    }
+}
+
+/**
  * Verify if an order is paid on Payra contract (Node.js version).
  *
  * @param {string} network   Blockchain network ("polygon", "ethereum", "linea", "flare")
  * @param {string} orderId   Unique order identifier
  * @returns {Promise<{success: boolean, paid: boolean|null, error: string|null}>}
  */
-export async function isOrderPaid(network, orderId)
-{
+ export async function isOrderPaid(network, orderId) {
     try {
-        const upperNet = network.toUpperCase();
-        const rpcUrl = getRpcUrl(upperNet);
-        const ok = await checkRpcHealth(rpcUrl);
-        if (!ok) throw new Error(`RPC ${rpcUrl} is not responding`);
-        const merchantId = process.env[`PAYRA_${upperNet}_MERCHANT_ID`];
-        const forwardAddress = process.env[`PAYRA_${upperNet}_CORE_FORWARD_CONTRACT_ADDRESS`];
+        const merchantId = process.env[`PAYRA_${network.toUpperCase()}_MERCHANT_ID`];
 
-        if (!merchantId || !forwardAddress) {
-            throw new Error(`Missing merchantId or forwardAddress for ${upperNet}`);
-        }
+        const {
+            forwardContract,
+            coreIface,
+            data,
+        } = await prepareForwardCall(
+            network,
+            "isOrderPaid",
+            [merchantId, orderId]
+        );
 
-        // Provider (read-only, RPC)
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        const rawResult = await forwardContract.forward.staticCall(data);
 
-        // ABI dla forward i core
-        const abiPath = path.resolve("./src/contracts/payraABI.json");
-        const abiArray = JSON.parse(fs.readFileSync(abiPath, "utf-8"));
-
-        const forwardIface = new ethers.Interface([
-            "function forward(bytes data) payable returns (bytes)"
-        ]);
-        const coreIface = new ethers.Interface([
-            "function isOrderPaid(uint256 _id, string _orderId) view returns (bool)"
-        ]);
-
-        // Encode call isOrderPaid
-        const encodedIsOrderPaid = coreIface.encodeFunctionData("isOrderPaid", [
-            merchantId,
-            orderId,
-        ]);
-
-        // Forward contract (only provider = read-only)
-        const forwardContract = new ethers.Contract(forwardAddress, forwardIface, provider);
-
-        // Call forward(bytes) as staticCall
-        const rawResult = await forwardContract.forward.staticCall(encodedIsOrderPaid);
-
-        // Decode result isOrderPaid()
-        const [isPaid] = coreIface.decodeFunctionResult("isOrderPaid", rawResult);
+        const [paid] = coreIface.decodeFunctionResult(
+            "isOrderPaid",
+            rawResult
+        );
 
         return {
             success: true,
-            paid: Boolean(isPaid),
+            paid: Boolean(paid),
             error: null,
         };
+
     } catch (err) {
-        console.error("Verification failed:", err.message);
+        console.error("isOrderPaid failed:", err.message);
         return {
             success: false,
             paid: null,
@@ -127,4 +169,63 @@ async function checkRpcHealth(url)
         console.log(`RPC ${url} failed:`, error.message);
         return false;
     }
+}
+
+/**
+ * Prepare forward() call to Payra Core contract (Node.js).
+ *
+ * @param {string} network
+ * @param {string} coreFunctionName
+ * @param {Array}  params
+ *
+ * @returns {Promise<{
+ *   provider: ethers.JsonRpcProvider,
+ *   forwardContract: ethers.Contract,
+ *   coreIface: ethers.Interface,
+ *   data: string
+ * }>}
+ */
+async function prepareForwardCall(network, coreFunctionName, params) {
+    const upperNet = network.toUpperCase();
+    const rpcUrl = getRpcUrl(upperNet);
+
+    const ok = await checkRpcHealth(rpcUrl);
+    if (!ok) throw new Error(`RPC ${rpcUrl} is not responding`);
+
+    const merchantId = process.env[`PAYRA_${upperNet}_MERCHANT_ID`];
+    const forwardAddress = process.env[`PAYRA_${upperNet}_CORE_FORWARD_CONTRACT_ADDRESS`];
+
+    if (!merchantId || !forwardAddress) {
+        throw new Error(`Missing merchantId or forwardAddress for ${upperNet}`);
+    }
+
+    // Provider (read-only)
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    // Load ABI
+    const abiPath = path.resolve("./src/contracts/payraABI.json");
+    const abiArray = JSON.parse(fs.readFileSync(abiPath, "utf-8"));
+
+    // Core + Forward interfaces
+    const coreIface = new ethers.Interface(abiArray);
+    const forwardIface = new ethers.Interface([
+        "function forward(bytes data) payable returns (bytes)"
+    ]);
+
+    // Encode calldata (ethers robi selector + ABI)
+    const data = coreIface.encodeFunctionData(coreFunctionName, params);
+
+    // Forward contract
+    const forwardContract = new ethers.Contract(
+        forwardAddress,
+        forwardIface,
+        provider
+    );
+
+    return {
+        provider,
+        forwardContract,
+        coreIface,
+        data,
+    };
 }
