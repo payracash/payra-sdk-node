@@ -1,4 +1,3 @@
-
 # Payra Node SDK
 
 Official **Node SDK** for integrating **Payra's on-chain payment system** into your backend applications.
@@ -40,9 +39,9 @@ This process ensures full compatibility between your backend and Payra’s on-ch
 
 ## Setup
 
-Before installing this package, make sure you have an active **Payra** account:
+Before installing this package, make sure you have a **MerchantID**
 
-[https://payra.cash](https://payra.cash)
+- [https://payra.cash/products/on-chain-payments/merchant-registration](https://payra.cash/products/on-chain-payments/merchant-registration)
 
 You will need:
 
@@ -151,7 +150,49 @@ try {
 | **`timestamp`**   | `number` | Unix timestamp of signature creation         |
 | **`payerAddress`**   | `string` | Payer Wallet Address   
 
-### Check Order Status
+---
+
+### Get Order Status
+
+Retrieve **full payment details** for a specific order from the Payra smart contract. This method returns the complete on-chain payment data associated with the order, including:
+
+-   whether the order has been paid,
+-   the payment token address,
+-   the paid amount,
+-   the fee amount,
+-   and the payment timestamp.
+
+Use this method when you need  **detailed information**  about the payment or want to display full transaction data.
+
+
+```ts
+import { getOrderStatus } from 'payra-sdk-node';
+
+const result = await getOrderStatus("polygon", "ord-170");
+console.log(result);
+```
+
+### Example response structure
+
+```ts
+{
+  success: true,
+  paid: true,
+  error: null,
+  token: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+  amount: 400000,
+  fee: 3600,
+  timestamp: 1765138941
+}
+```
+
+---
+
+### Check Order Paid Status
+
+Perform a **simple payment check** for a specific order. This method only verifies whether the order has been paid (`true`  or  `false`) and does **not** return any additional payment details.
+
+Use this method when you only need a **quick boolean confirmation** of the payment status.
 
 ```ts
 import { isOrderPaid } from 'payra-sdk-node';
@@ -168,7 +209,6 @@ console.log(result);
   paid: true,
   error: null
 }
-
 ```
 
 **Note:** Network identifiers should always be lowercase (e.g., `"polygon"`, `"ethereum"`, `"linea"`, `"flare"`).
@@ -252,15 +292,15 @@ PAYRA_EXCHANGE_RATE_API_KEY=your_api_key_here
 -   [https://payra.cash](https://payra.cash)
 -   [https://payra.tech](https://payra.tech)
 -   [https://payra.xyz](https://payra.xyz)
--   [https://payra.eth](https://payra.eth)
+-   [https://payra.eth](https://payra.eth.limo) - suporrted by Brave Browser or .limo
 
 ## Social Media
 
 - [Telegram Payra Group](https://t.me/+GhTyJJrd4SMyMDA0)
 - [Telegram Announcements](https://t.me/payracash)
 - [Twix (X)](https://x.com/PayraCash)
-- [Hashnode](https://payra.hashnode.dev)
+- [Dev.to](https://dev.to/payracash)
 
 ##  License
 
-MIT © [Payra](https://github.com/payracash)
+MIT © [Payra](https://payra.cash)
