@@ -8,11 +8,11 @@ dotenv.config();
 
 export function generateSignature(network, tokenAddress, orderId, amount, timestamp, payerAddress)
 {
-    const { privateKey, merchantId } = getPayraConfig(network);
+    const { signatureKey, merchantId } = getPayraConfig(network);
 
-    let key = privateKey.startsWith('0x')
-        ? privateKey.slice(2)
-        : privateKey;
+    let key = signatureKey.startsWith('0x')
+        ? signatureKey.slice(2)
+        : signatureKey;
 
     if (key.length !== 64)
         throw new Error(`Invalid private key for ${network}`);
@@ -42,12 +42,12 @@ export function generateSignature(network, tokenAddress, orderId, amount, timest
 function getPayraConfig(network)
 {
     const upper = network.toUpperCase();
-    const privateKey = process.env[`PAYRA_${upper}_PRIVATE_KEY`];
+    const signatureKey = process.env[`PAYRA_${upper}_SIGNATURE_KEY`];
     const merchantId = process.env[`PAYRA_${upper}_MERCHANT_ID`];
 
-    if (!privateKey || !merchantId) {
+    if (!signatureKey || !merchantId) {
         throw new Error(`Missing PAYRA config for network: ${network}`);
     }
 
-    return { privateKey, merchantId };
+    return { signatureKey, merchantId };
 }
