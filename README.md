@@ -44,7 +44,7 @@ This process ensures full compatibility between your backend and Payra’s on-ch
 
 Before installing this package, make sure you have a **MerchantID**
 
-- [https://payra.cash/products/on-chain-payments/merchant-registration](https://payra.cash/products/on-chain-payments/merchant-registration)
+- [https://payra.cash/products/on-chain-payments/registration](https://payra.cash/products/on-chain-payments/registration#registration-form)
 
 You will need:
 - Your **Merchant ID** (unique for each blockchain network)
