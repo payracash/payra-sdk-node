@@ -4,19 +4,18 @@ Official **Node SDK** for integrating **Payra's on-chain payment system** into y
 
 This SDK provides:
 - Secure generation of **ECDSA signatures** compatible with the Payra smart contract — used for order payment verification.
-- Simple methods for **checking the on-chain status of orders** to confirm completed payments.
-
+- Simple methods for **checking the on-chain details of orders** to confirm completed payments.
 
 ## How It Works
 
 The typical flow for signing and verifying a Payra transaction:
 1. The **frontend** prepares all required payment parameters:
--  **Network** – blockchain name (e.g. Polygon, Linea)
--  **Token address** – ERC-20 token contract address
--  **Order ID** – unique order identifier
--  **Amount WEI** – already converted to the smallest unit (e.g. wei, 10⁶)
--  **Timestamp** – Unix timestamp of the order
--  **Payer wallet address** – the wallet address from which the user will make the on-chain payment
+	-  **Network** – blockchain name (e.g. Polygon, Linea)
+	-  **Token address** – ERC-20 token contract address
+	-  **Order ID** – unique order identifier
+	-  **Amount WEI** – already converted to the smallest unit (e.g. wei, 10⁶)
+	-  **Timestamp** – Unix timestamp of the order
+	-  **Payer wallet address** – the wallet address from which the user will make the on-chain payment
 2. The frontend sends these parameters to your **backend**.
 3. The **backend** uses this SDK to generate a cryptographic **ECDSA signature** with its signature key (performed **offline**).
 4. The backend returns the generated signature to the frontend.
@@ -24,19 +23,17 @@ The typical flow for signing and verifying a Payra transaction:
 
 This process ensures full compatibility between your backend and Payra’s on-chain verification logic.
 
-
 ## Features
 
 - Generates **Ethereum ECDSA signatures** using the `secp256k1` curve.
 - Fully compatible with **Payra's Solidity smart contracts** (`ERC-1155` payment verification).
 - Supports `.env` and `config/payra.php` configuration for multiple blockchain networks.
 - Laravel IoC container integration (easy dependency injection)
-- Verifies **order payment status directly on-chain** via RPC or blockchain explorer API.
+- Verifies **order payment details directly on-chain** via RPC or blockchain explorer API.
 - Provides **secure backend integration** for signing and verifying transactions.
 - Includes optional utility helpers for:
 -  **Currency conversion** (via [ExchangeRate API](https://www.exchangerate-api.com/))
 -  **USD ⇄ WEI** conversion for token precision handling.
-
 
 ## Setup
 
@@ -73,7 +70,6 @@ Install the latest stable version from [NPM](https://www.npmjs.com/package/payra
 ```bash
 npm  install  payra-sdk-node
 ```
-
 
 ## Environment Configuration
 
@@ -122,14 +118,13 @@ PAYRA_LINEA_RPC_URL_2=
 
 - The cache automatically refreshes when it expires.
 - You can adjust the cache duration by setting `PAYRA_EXCHANGE_RATE_CACHE_TIME`:
--  `5` → cache for 5 minutes
--  `60` → cache for 1 hour
--  `720` → cache for 12 hours (default)
+	-  `5` → cache for 5 minutes
+	-  `60` → cache for 1 hour
+	-  `720` → cache for 12 hours (default)
 - Each network (Polygon, Ethereum, Linea) has its own **merchant ID**, **signature key**, and **RPC URLs**.
 - The SDK automatically detects which chain configuration to use based on the selected network.
 - You can use multiple RPC URLs for redundancy (the SDK will automatically fall back if one fails).
 - Contract addresses correspond to the deployed Payra Core Forward contracts per network.
-
 
 ## Usage Example
 
@@ -176,7 +171,7 @@ try {
 | **`payerAddress`** | `string` | Payer Wallet Address
 ---
 
-### Get Order Status
+### Get Order Details
 
 Retrieve **full payment details** for a specific order from the Payra smart contract. This method returns the complete on-chain payment data associated with the order, including:
 - whether the order has been paid,
@@ -188,8 +183,8 @@ Retrieve **full payment details** for a specific order from the Payra smart cont
 Use this method when you need **detailed information** about the payment or want to display full transaction data.
 
 ```ts
-import { getOrderStatus } from  'payra-sdk-node';
-const  result = await  getOrderStatus("polygon", "ord-170");
+import { getOrderDetails } from  'payra-sdk-node';
+const  result = await  getOrderDetails("polygon", "ord-170");
 console.log(result);
 ```
 
@@ -233,7 +228,6 @@ console.log(result);
 
 **Note:** Network identifiers should always be lowercase (e.g., `"polygon"`, `"ethereum"`, `"linea"`, `"flare"`).
 
-
 ## Utilities / Conversion Helpers  
 
 The SDK includes **helper functions** for working with token amounts and currency conversion.
@@ -249,7 +243,6 @@ console.log("Token decimals polygon usdt:", tokenDecimals);
 Returns the number of decimal places for a given token on a specific network.
 
 ---
-
 
 ### 2. Convert USD/Token Amounts to Wei
 
@@ -296,13 +289,11 @@ PAYRA_EXCHANGE_RATE_API_KEY=your_api_key_here
 
 **Note:** The free plan allows 1,500 requests per month, which is sufficient for most stores. Exchange rates on this plan are updated every 24 hours, so with caching, it’s more than enough. Paid plans offer faster update intervals.
 
-
 ## Notes
 
 - Your signature key **must be kept safe** and **never** committed to code repositories.
 -  `PAYRA_WALLET_KEY` can be with or without `0x` prefix — both formats are accepted.
 - The returned signature is a standard `0x`-prefixed Ethereum ECDSA signature.
-
 
 ## Project
 
@@ -311,14 +302,12 @@ PAYRA_EXCHANGE_RATE_API_KEY=your_api_key_here
 - [https://payra.xyz](https://payra.xyz)
 - [https://payra.eth](https://payra.eth.limo) - suporrted by Brave and Opera Browser or .limo
 
-
 ## Social Media
 
 - [Telegram Payra Group](https://t.me/+GhTyJJrd4SMyMDA0)
 - [Telegram Announcements](https://t.me/payracash)
 - [Twix (X)](https://x.com/PayraCash)
 - [Dev.to](https://dev.to/payracash)
-
 
 ## License
 MIT © [Payra](https://payra.cash)

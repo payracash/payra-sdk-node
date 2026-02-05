@@ -1,4 +1,4 @@
-// src/orderVerification.js
+// src/orderService.js
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
@@ -23,7 +23,7 @@ dotenv.config();
  *   error: string|null
  * }>}
  */
-export async function getOrderStatus(network, orderId) {
+export async function getOrderDetails(network, orderId) {
     try {
         const { userDataContract, merchantId } = await getPayraContracts(network);
         const order = await userDataContract.getOrderDetails(merchantId, orderId);
