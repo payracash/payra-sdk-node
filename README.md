@@ -60,7 +60,6 @@ To obtain your **RPC URLs** which are required for reading on-chain order status
 Optional (recommended):
 - Create a free API key at [ExchangeRate API](https://www.exchangerate-api.com/) to enable **automatic fiat → USD conversions** using the built-in utility helpers.
 
-
 ## Installation
 
 ### From NPM
@@ -108,7 +107,7 @@ PAYRA_ETHEREUM_RPC_URL_2=
 
 # Linea Network Configuration
 PAYRA_LINEA_OCP_GATEWAY_CONTRACT_ADDRESS=
-PAYRA_LINEA_SIGNATURE__KEY=
+PAYRA_LINEA_SIGNATURE_KEY=
 PAYRA_LINEA_MERCHANT_ID=
 PAYRA_LINEA_RPC_URL_1=
 PAYRA_LINEA_RPC_URL_2=
@@ -215,7 +214,6 @@ const  result = await  isOrderPaid("polygon", "ord-170");
 console.log(result);
 ```
 
-
 ### Example response structure
 
 ```ts
@@ -265,14 +263,15 @@ console.log("From Wei:", amount);
 ### 4. Currency Conversion (Optional)
 
 Payra processes all payments in **USD**. If your store uses another currency (like EUR, AUD, or GBP), you can:
+
 - Convert the amount to USD on your backend manually, **or**
 - Use the built-in helper provided in the SDK. 
 
 ```ts
-import { PayraUtils } from  'payra-sdk-node';
+import { PayraUtils } from 'payra-sdk-node';
 // Convert 100 EUR to USD
-const  usdValue = await  PayraUtils.convertToUSD(100, "EUR");
-console.log("100 EUR =", usdValue, "USD");
+const usdValue = await  PayraUtils.convertToUSD(100, "EUR");
+console.log("100 EUR =",nusdValue, "USD");
 ```
 
 #### Setup for Currency Conversion
@@ -289,11 +288,10 @@ PAYRA_EXCHANGE_RATE_API_KEY=your_api_key_here
 
 **Note:** The free plan allows 1,500 requests per month, which is sufficient for most stores. Exchange rates on this plan are updated every 24 hours, so with caching, it’s more than enough. Paid plans offer faster update intervals.
 
-## Notes
+## Security Notice
 
-- Your signature key **must be kept safe** and **never** committed to code repositories.
--  `PAYRA_WALLET_KEY` can be with or without `0x` prefix — both formats are accepted.
-- The returned signature is a standard `0x`-prefixed Ethereum ECDSA signature.
+Never expose your signature key in frontend or client-side code.  
+This SDK is  **server-side only**  and must be used securely on your backend. Never use it in frontend or browser environments. Also, never commit your `.env`  file to version control.
 
 ## Project
 
@@ -310,4 +308,5 @@ PAYRA_EXCHANGE_RATE_API_KEY=your_api_key_here
 - [Dev.to](https://dev.to/payracash)
 
 ## License
+
 MIT © [Payra](https://payra.cash)
